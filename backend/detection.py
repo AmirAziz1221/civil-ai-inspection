@@ -54,7 +54,14 @@ def run_detection(image_path: str, model_name: str, output_dir: str, image_id: s
 
 
 def _real_detection(model, image_path: str, model_name: str, model_info: dict, output_dir: str, image_id: str) -> Dict:
-    results = model(image_path, conf=0.25, iou=0.45)
+    # Resize large images before inference to speed up on CPU
+    from PIL import Image as PILImage
+    img_pil = PILImage.open(image_path)
+    w, h = img_pil.size
+    if w > 1280 or h > 1280:
+        img_pil.thumbnail((1280, 1280))
+        img_pil.save(image_path)
+    results = model(image_path, conf=0.25, iou=0.45, imgsz=640, half=False, device='cpu')
 
     img = cv2.imread(image_path)
     detections = []
