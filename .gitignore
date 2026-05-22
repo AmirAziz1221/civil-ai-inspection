@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# Data folders
+backend/uploads/*
+backend/outputs/*
+backend/reports/*
+backend/models/*
+backend/inspections.db
+!backend/uploads/.gitkeep
+!backend/outputs/.gitkeep
+!backend/reports/.gitkeep
+!backend/models/.gitkeep
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Docker
+*.log
