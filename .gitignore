@@ -4,16 +4,17 @@ __pycache__/
 *.pyo
 .env
 
-# Data folders
+# Data folders - keep uploads/outputs/reports empty
 backend/uploads/*
 backend/outputs/*
 backend/reports/*
-backend/models/*
 backend/inspections.db
 !backend/uploads/.gitkeep
 !backend/outputs/.gitkeep
 !backend/reports/.gitkeep
-!backend/models/.gitkeep
+
+# Models folder - DO NOT ignore .pt files
+# backend/models/*  ← removed this line
 
 # Node
 frontend/node_modules/
