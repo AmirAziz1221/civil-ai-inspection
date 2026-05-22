@@ -1,7 +1,37 @@
 # CivilScan AI — Civil Infrastructure Pathology Detection
 
-> AI-powered civil engineering inspection platform for **Dani**  
-> Detects pathologies in facades, roads, bridges, PV panels, powerlines, and slopes.
+> AI-powered civil engineering inspection platform  
+> **Prepared for: Dani** · Powered by YOLO + Groq LLaMA
+
+[![Live App](https://img.shields.io/badge/Live%20App-civil--ai--inspection.vercel.app-blue?style=for-the-badge)](https://civil-ai-inspection.vercel.app)
+[![API Docs](https://img.shields.io/badge/API%20Docs-railway.app-green?style=for-the-badge)](https://civil-ai-inspection-production.up.railway.app/docs)
+[![GitHub](https://img.shields.io/badge/GitHub-AmirAziz1221-black?style=for-the-badge&logo=github)](https://github.com/AmirAziz1221/civil-ai-inspection)
+
+---
+
+## 🌐 Live Deployment
+
+| Service | URL |
+|---------|-----|
+| 🌐 **Frontend (Client App)** | https://civil-ai-inspection.vercel.app |
+| ⚙️ **Backend API** | https://civil-ai-inspection-production.up.railway.app |
+| 📖 **API Documentation** | https://civil-ai-inspection-production.up.railway.app/docs |
+
+---
+
+## 🎯 What This System Does
+
+Upload a photo of any civil infrastructure and get a **full AI-powered inspection report** in minutes — including annotated images, defect classification, severity levels, and professional PDF/Word reports.
+
+### ✅ Supported Asset Types (5 Models)
+
+| Model | Asset Type | Detects |
+|-------|-----------|---------|
+| 🏢 **Facade** | Building Facades | Cracks, spalling, efflorescence, corrosion |
+| 🛣️ **Asphalt** | Roads & Pavements | Potholes, longitudinal/transverse cracks, rutting |
+| 🌉 **Concrete & Bridges** | Concrete Structures | Structural cracks, rebar exposure, deformation |
+| ☀️ **PV Panels** | Photovoltaic Systems | Hotspots, micro-cracks, soiling, delamination |
+| ⚡ **Powerline & Towers** | Power Infrastructure | Corrosion, broken insulators, wire damage |
 
 ---
 
@@ -10,74 +40,115 @@
 ```
 ┌─────────────────────┐     HTTP/REST      ┌──────────────────────────┐
 │   React Frontend    │ ◄────────────────► │   FastAPI Backend        │
-│   (Port 3000)       │                    │   (Port 8000)            │
+│   Vercel (Free)     │                    │   Railway (Free)         │
 │                     │                    │                          │
 │  • Dashboard        │                    │  • /upload               │
 │  • New Inspection   │                    │  • /detect               │
 │  • History          │                    │  • /generate-report      │
 │  • Report Viewer    │                    │  • /download/docx/:id    │
 └─────────────────────┘                    │  • /download/pdf/:id     │
-                                           │  • /inspections          │
                                            └──────────┬───────────────┘
                                                       │
                                     ┌─────────────────┼──────────────┐
                                     │                 │              │
-                               YOLO/PyTorch       SQLite         LLM API
-                               (.pt models)      Database    (OpenAI/Ollama)
+                               YOLO/PyTorch       SQLite         Groq LLaMA
+                               (.pt models)      Database      (Free API)
 ```
 
 ---
 
-## 🚀 Quick Start
+## 📋 How to Use
+
+1. Open **https://civil-ai-inspection.vercel.app**
+2. Click **"New Inspection"** in the sidebar
+3. **Upload** a photo of your infrastructure (JPG, PNG, BMP)
+4. **Select** the matching detection model
+5. Click **"Run AI Detection"** — AI analyses the image
+6. Add optional **engineer notes**
+7. Click **"Generate AI Report"**
+8. **Download** your report as Word (.docx) or PDF
+
+---
+
+## 📄 Report Contents
+
+Each generated report includes:
+
+1. **Title Page** — Prepared for Dani
+2. **Project Information** — Date, asset type, model, filename
+3. **Detection Summary** — Total defects, severity breakdown
+4. **Detection Details** — Per-defect class, confidence score, severity
+5. **Visual Evidence** — Original + annotated images with bounding boxes
+6. **AI Interpretation** — Professional civil engineering analysis
+7. **Defect Descriptions** — Technical characterization of each defect
+8. **Possible Causes** — Root cause analysis
+9. **Severity Assessment** — Engineering justification
+10. **Risk Assessment** — Structural integrity implications
+11. **Recommended Actions** — Prioritized repair guidance
+12. **Priority Level** — Immediate / Short-term / Long-term
+13. **Final Conclusion** — Summary and next steps
+14. **Disclaimer** — AI verification notice
+
+---
+
+## 📋 API Reference
+
+| Method | Endpoint | Description |
+|--------|---------|-------------|
+| `POST` | `/upload` | Upload image/video file |
+| `POST` | `/detect` | Run AI detection on uploaded image |
+| `POST` | `/generate-report` | Generate Word + PDF report |
+| `GET` | `/download/docx/{id}` | Download Word report |
+| `GET` | `/download/pdf/{id}` | Download PDF report |
+| `GET` | `/inspections` | List all inspections |
+| `GET` | `/inspection/{id}` | Get single inspection details |
+| `GET` | `/models` | List available detection models |
+
+Full interactive docs: https://civil-ai-inspection-production.up.railway.app/docs
+
+---
+
+## 🚀 Run Locally with Docker
 
 ### Prerequisites
-- Docker & Docker Compose installed
-- Your `.pt` model files (optional — demo mode works without them)
+- Docker Desktop installed and running
+- Git installed
 
-### 1. Clone and configure
+### Steps
 
 ```bash
-git clone <repo-url>
+# 1. Clone the repository
+git clone https://github.com/AmirAziz1221/civil-ai-inspection.git
 cd civil-ai-inspection
 
-# Copy env template and fill in your values
+# 2. Configure environment
 cp backend/.env.example backend/.env
-```
+# Edit backend/.env and add your LLM API key
 
-### 2. Add your YOLO models (optional)
+# 3. Add your .pt model files (optional)
+# Place them in backend/models/
 
-Place your `.pt` files in `backend/models/`:
-
-```
-backend/models/
-├── facade pathologies detection.pt
-├── asphalts pathologies detection.pt
-├── concreate & bragies pathologies detection.pt
-├── PV pathologies detection.pt
-├── powerline and towers pathologies detection.pt
-└── slopes pathologies detection.pt
-```
-
-> **Without model files**: The system runs in **demo mode** — it generates realistic mock detections so you can test the full workflow including report generation.
-
-### 3. Launch
-
-```bash
+# 4. Launch
 docker-compose up --build
 ```
 
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
+- **Frontend:** http://localhost:3000
+- **Backend API:** http://localhost:8000
+- **API Docs:** http://localhost:8000/docs
 
 ---
 
 ## ⚙️ LLM Configuration
 
-Edit `backend/.env` to swap LLM providers — no code changes needed:
+Edit `backend/.env` to swap providers — **no code changes needed:**
 
 ```env
-# OpenAI (default)
+# Groq (current - fast and free)
+LLM_API_BASE=https://api.groq.com/openai/v1
+LLM_API_KEY=your-groq-key
+LLM_MODEL=llama-3.3-70b-versatile
+
+# OpenAI
 LLM_API_BASE=https://api.openai.com/v1
 LLM_API_KEY=sk-...
 LLM_MODEL=gpt-4o-mini
@@ -86,44 +157,9 @@ LLM_MODEL=gpt-4o-mini
 LLM_API_BASE=http://localhost:11434/v1
 LLM_API_KEY=ollama
 LLM_MODEL=llama3
-
-# Groq (fast, free tier available)
-LLM_API_BASE=https://api.groq.com/openai/v1
-LLM_API_KEY=gsk_...
-LLM_MODEL=llama3-70b-8192
 ```
 
-> **Without an API key**: The system uses a built-in template-based fallback. Reports are still generated with professional civil engineering language — just not AI-customised.
-
----
-
-## 🔬 Detection Models
-
-| Key | Model File | Asset Type |
-|-----|-----------|------------|
-| `facade` | `facade pathologies detection.pt` | Building facades |
-| `asphalt` | `asphalts pathologies detection.pt` | Roads & pavements |
-| `concrete` | `concreate & bragies pathologies detection.pt` | Concrete & bridges |
-| `pv` | `PV pathologies detection.pt` | Photovoltaic systems |
-| `powerline` | `powerline and towers pathologies detection.pt` | Power infrastructure |
-| `slopes` | `slopes pathologies detection.pt` | Slopes & embankments |
-
----
-
-## 📋 API Reference
-
-| Method | Endpoint | Description |
-|--------|---------|-------------|
-| `POST` | `/upload` | Upload image/video |
-| `POST` | `/detect` | Run AI detection |
-| `POST` | `/generate-report` | Generate Word+PDF report |
-| `GET` | `/download/docx/{id}` | Download Word report |
-| `GET` | `/download/pdf/{id}` | Download PDF report |
-| `GET` | `/inspections` | List all inspections |
-| `GET` | `/inspection/{id}` | Get inspection details |
-| `GET` | `/models` | List available models |
-
-Full interactive docs: http://localhost:8000/docs
+> **Without an API key:** The system uses a built-in professional template fallback — reports still generate correctly.
 
 ---
 
@@ -132,31 +168,31 @@ Full interactive docs: http://localhost:8000/docs
 ```
 civil-ai-inspection/
 ├── backend/
-│   ├── main.py              # FastAPI app & endpoints
+│   ├── main.py              # FastAPI app & all endpoints
 │   ├── model_loader.py      # YOLO model registry & loader
-│   ├── detection.py         # Inference engine (real + mock)
-│   ├── report_generator.py  # Word & PDF report creation
-│   ├── llm_client.py        # LLM integration (swap here)
-│   ├── database.py          # SQLite CRUD
+│   ├── detection.py         # Inference engine (real + demo mode)
+│   ├── report_generator.py  # Word & PDF report generation
+│   ├── llm_client.py        # LLM integration (swap provider here)
+│   ├── database.py          # SQLite CRUD operations
 │   ├── requirements.txt
 │   ├── Dockerfile
 │   ├── .env.example
-│   ├── models/              ← Place .pt files here
-│   ├── uploads/             ← Uploaded images
-│   ├── outputs/             ← Annotated images
-│   └── reports/             ← Generated reports
+│   ├── models/              ← Place .pt model files here
+│   ├── uploads/             ← Uploaded images stored here
+│   ├── outputs/             ← Annotated images stored here
+│   └── reports/             ← Generated reports stored here
 │
 ├── frontend/
 │   ├── src/
-│   │   ├── App.jsx          # Router + layout
+│   │   ├── App.jsx              # Router + sidebar layout
 │   │   ├── pages/
-│   │   │   ├── Dashboard.jsx
-│   │   │   ├── InspectionPage.jsx
-│   │   │   ├── HistoryPage.jsx
-│   │   │   └── InspectionDetail.jsx
+│   │   │   ├── Dashboard.jsx    # Stats + recent inspections
+│   │   │   ├── InspectionPage.jsx  # 4-step inspection wizard
+│   │   │   ├── HistoryPage.jsx  # Searchable inspection history
+│   │   │   └── InspectionDetail.jsx  # Full report viewer
 │   │   ├── api/
-│   │   │   └── client.js
-│   │   └── index.css
+│   │   │   └── client.js        # Axios API client
+│   │   └── index.css            # Tailwind + custom styles
 │   ├── Dockerfile
 │   ├── nginx.conf
 │   └── package.json
@@ -167,52 +203,25 @@ civil-ai-inspection/
 
 ---
 
-## 🔧 Development (without Docker)
+## 🔧 Tech Stack
 
-**Backend:**
-```bash
-cd backend
-pip install -r requirements.txt
-cp .env.example .env
-uvicorn main:app --reload --port 8000
-```
-
-**Frontend:**
-```bash
-cd frontend
-npm install
-cp .env.example .env
-# Edit .env: VITE_API_URL=http://localhost:8000
-npm run dev
-```
-
----
-
-## 📄 Report Contents
-
-Each generated report includes:
-
-1. **Title Page** — Prepared for Dani
-2. **Project Information** — Date, asset type, model, file
-3. **Detection Summary** — Total defects, severity breakdown table
-4. **Detection Details** — Per-defect class, confidence, severity
-5. **Visual Evidence** — Original + annotated images
-6. **AI Interpretation** — Professional engineering analysis
-7. **Defect Descriptions** — Technical defect characterization
-8. **Possible Causes** — Root cause analysis
-9. **Severity Assessment** — Engineering justification
-10. **Risk Assessment** — Structural integrity implications
-11. **Recommended Actions** — Prioritized repair guidance
-12. **Priority Level** — Immediate / Short-term / Long-term
-13. **Final Conclusion** — Summary and next steps
-14. **Disclaimer** — AI verification note
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | React 18, Tailwind CSS, Vite, Recharts |
+| **Backend** | FastAPI, Python 3.11, Uvicorn |
+| **AI Models** | Ultralytics YOLO, PyTorch |
+| **LLM** | Groq (LLaMA 3.3 70B) — OpenAI-compatible |
+| **Database** | SQLite |
+| **Reports** | python-docx (Word), ReportLab (PDF) |
+| **Image Processing** | OpenCV, Pillow |
+| **Deployment** | Docker, Railway (backend), Vercel (frontend) |
 
 ---
 
 ## 🛡️ Disclaimer
 
-This tool is for **preliminary inspection support** only. All AI-generated findings must be verified by a qualified, licensed civil engineer before any remediation or safety decisions are made.
+This tool is for **preliminary inspection support only**. All AI-generated findings must be verified and validated by a qualified, licensed civil engineer before any remediation or safety-critical decisions are made.
 
 ---
 
-*CivilScan AI · Prepared for Dani*
+*CivilScan AI v1.0 · Prepared for Dani · Built with ❤️ using YOLO + Groq LLaMA*
