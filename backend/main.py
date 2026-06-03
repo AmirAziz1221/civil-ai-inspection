@@ -49,6 +49,106 @@ class ReportRequest(BaseModel):
     inspection_id: str
     engineer_notes: Optional[str] = ""
 
+class BatchDetectionRequest(BaseModel):
+    image_ids: list[str]
+    model_name: str
+    asset_type: str
+
+@app.post("/detect-batch")
+async def detect_batch(request: BatchDetectionRequest):
+    if not request.image_ids:
+        raise HTTPException(400, "No images provided")
+
+    all_detections = []
+    annotated_images = []
+    total_defects = 0
+    severity_summary = {"Critical": 0, "High": 0, "Medium": 0, "Low": 0}
+
+    for image_id in request.image_ids:
+        # Find image file
+        image_path = None
+        for f in UPLOAD_DIR.iterdir():
+            if f.stem == image_id:
+                image_path = f
+                break
+
+        if not image_path:
+            continue
+
+        try:
+            results = run_detection(
+                image_path=str(image_path),
+                model_name=request.model_name,
+                output_dir=str(OUTPUT_DIR),
+                image_id=image_id
+            )
+
+            all_detections.append({
+                "image_id": image_id,
+                "filename": image_path.name,
+                "detections": results["detections"],
+                "total_defects": results["total_defects"],
+                "severity_summary": results["severity_summary"],
+                "overall_severity": results["overall_severity"],
+                "annotated_image": results.get("annotated_image", "")
+            })
+
+            annotated_images.append(results.get("annotated_image", ""))
+            total_defects += results["total_defects"]
+
+            for sev, count in results["severity_summary"].items():
+                severity_summary[sev] = severity_summary.get(sev, 0) + count
+
+        except Exception as e:
+            all_detections.append({
+                "image_id": image_id,
+                "filename": image_path.name,
+                "error": str(e),
+                "detections": [],
+                "total_defects": 0,
+                "severity_summary": {},
+                "overall_severity": "Low",
+                "annotated_image": ""
+            })
+
+    # Calculate overall severity
+    overall_severity = "Low"
+    if severity_summary["Critical"] > 0:
+        overall_severity = "Critical"
+    elif severity_summary["High"] > 0:
+        overall_severity = "High"
+    elif severity_summary["Medium"] > 0:
+        overall_severity = "Medium"
+
+    # Save batch inspection to DB
+    inspection_id = str(uuid.uuid4())
+    inspection_data = {
+        "id": inspection_id,
+        "image_id": "__batch__",
+        "original_filename": f"{len(request.image_ids)} images",
+        "model_name": request.model_name,
+        "asset_type": request.asset_type,
+        "detections": all_detections,
+        "annotated_image": annotated_images[0] if annotated_images else "",
+        "total_defects": total_defects,
+        "severity_summary": severity_summary,
+        "overall_severity": overall_severity,
+        "created_at": datetime.utcnow().isoformat(),
+        "engineer_notes": "",
+        "report_docx": "",
+        "report_pdf": "",
+        "is_batch": True
+    }
+    save_inspection(inspection_data)
+
+    return {
+        "inspection_id": inspection_id,
+        "total_images": len(request.image_ids),
+        "total_defects": total_defects,
+        "severity_summary": severity_summary,
+        "overall_severity": overall_severity,
+        "image_results": all_detections
+    }
 @app.get("/")
 def root():
     return {"message": "Civil AI Inspection API", "version": "1.0.0"}
@@ -148,13 +248,34 @@ async def generate_report(request: ReportRequest):
     docx_path = REPORT_DIR / f"{request.inspection_id}.docx"
     pdf_path = REPORT_DIR / f"{request.inspection_id}.pdf"
 
-    generate_word_report(inspection, ai_report, str(docx_path))
-    generate_pdf_report(inspection, ai_report, str(pdf_path))
+    # Check if batch inspection
+    is_batch = inspection.get("is_batch", False)
+
+    if is_batch:
+        from report_generator import generate_batch_word_report
+        generate_batch_word_report(
+            inspection,
+            ai_report,
+            str(docx_path)
+        )
+    else:
+        generate_word_report(
+            inspection,
+            ai_report,
+            str(docx_path)
+        )
+
+    generate_pdf_report(
+        inspection,
+        ai_report,
+        str(pdf_path)
+    )
 
     inspection["engineer_notes"] = request.engineer_notes or ""
     inspection["report_docx"] = str(docx_path)
     inspection["report_pdf"] = str(pdf_path)
     inspection["ai_report"] = ai_report
+
     save_inspection(inspection)
 
     return {

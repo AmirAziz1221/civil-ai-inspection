@@ -6,11 +6,13 @@ import {
   AlertTriangle, FileText, Download, Cpu, Image as ImageIcon,
   RefreshCw, Wand2, Info
 } from 'lucide-react'
-import clsx from 'clsx'
-import {
+
+// Note: Ensure your client.js exports 'api' so api.post works in handleDetect
+import api, {
   uploadImage, runDetection, generateReport,
   getModels, getDownloadUrl
 } from '../api/client.js'
+import clsx from 'clsx'
 
 const STEPS = ['Upload', 'Model', 'Detect', 'Report']
 
@@ -88,8 +90,8 @@ function ModelCard({ model, selected, onSelect }) {
 
 export default function InspectionPage() {
   const [step, setStep]             = useState(0)
-  const [file, setFile]             = useState(null)
-  const [preview, setPreview]       = useState(null)
+  const [files, setFiles]           = useState([])
+  const [previews, setPreviews]     = useState([])
   const [uploadProgress, setProgress] = useState(0)
   const [uploadResult, setUpload]   = useState(null)
   const [models, setModels]         = useState([])
@@ -110,26 +112,30 @@ export default function InspectionPage() {
 
   const onDrop = useCallback((accepted) => {
     if (!accepted.length) return
-    const f = accepted[0]
-    setFile(f)
-    setPreview(URL.createObjectURL(f))
+    setFiles(prev => [...prev, ...accepted])
+    setPreviews(prev => [...prev, ...accepted.map(f => URL.createObjectURL(f))])
     setError('')
   }, [])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { 'image/*': ['.jpg','.jpeg','.png','.bmp','.tiff'], 'video/*': ['.mp4','.avi','.mov'] },
-    maxFiles: 1,
+    maxFiles: 0,
     maxSize: 100 * 1024 * 1024,
   })
 
+  // Fixed: Added the missing handleUpload function
   const handleUpload = async () => {
-    if (!file) return
+    if (!files.length) return
     setLoading(true)
     setError('')
     try {
-      const res = await uploadImage(file, setProgress)
-      setUpload(res.data)
+      const uploadedIds = []
+      for (const f of files) {
+        const res = await uploadImage(f, setProgress)
+        uploadedIds.push(res.data.image_id)
+      }
+      setUpload({ image_ids: uploadedIds, count: uploadedIds.length })
       setStep(1)
     } catch (e) {
       setError(e.message)
@@ -146,11 +152,18 @@ export default function InspectionPage() {
     setStep(2)
   }
 
+  // Fixed: Removed the duplicate handleDetect and kept the batch-capable one
   const handleDetect = async () => {
     setLoading(true)
     setError('')
     try {
-      const res = await runDetection(uploadResult.image_id, selectedModel, assetType)
+      const res = files.length > 1
+        ? await api.post('/detect-batch', {
+            image_ids: uploadResult.image_ids,
+            model_name: selectedModel,
+            asset_type: assetType
+          })
+        : await runDetection(uploadResult.image_ids[0], selectedModel, assetType)
       setDetection(res.data)
       setStep(3)
     } catch (e) {
@@ -174,7 +187,7 @@ export default function InspectionPage() {
   }
 
   const reset = () => {
-    setStep(0); setFile(null); setPreview(null); setUpload(null)
+    setStep(0); setFiles([]); setPreviews([]); setUpload(null)
     setModel(''); setDetection(null); setReport(null); setNotes(''); setError('')
   }
 
@@ -209,11 +222,20 @@ export default function InspectionPage() {
             )}
           >
             <input {...getInputProps()} />
-            {preview ? (
+            {previews.length > 0 ? (
               <div>
-                <img src={preview} alt="Preview" className="max-h-56 mx-auto rounded-lg object-contain mb-3" />
-                <p className="text-sm font-medium text-slate-700">{file.name}</p>
-                <p className="text-xs text-slate-400 mt-1">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                <div className="flex flex-wrap gap-2 justify-center mb-3">
+                  {previews.map((p, i) => (
+                    <div key={i} className="relative">
+                      <img src={p} alt={`Preview ${i+1}`} className="h-24 w-24 rounded-lg object-cover border-2 border-brand-200" />
+                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-brand-600 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                        {i+1}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-sm font-medium text-slate-700">{files.length} image{files.length > 1 ? 's' : ''} selected</p>
+                <p className="text-xs text-slate-400 mt-1">Click or drag to add more</p>
               </div>
             ) : (
               <div>
@@ -238,7 +260,8 @@ export default function InspectionPage() {
           )}
 
           <div className="flex justify-end mt-5">
-            <button onClick={handleUpload} disabled={!file || loading} className="btn-primary">
+            {/* Fixed: Changed `!file` to `files.length === 0` to prevent reference error */}
+            <button onClick={handleUpload} disabled={files.length === 0 || loading} className="btn-primary">
               {loading ? <><Loader2 size={15} className="animate-spin" /> Uploading…</> : <>Continue <ChevronRight size={15} /></>}
             </button>
           </div>
@@ -284,9 +307,13 @@ export default function InspectionPage() {
             <h2 className="text-base font-semibold text-slate-800 mb-4 flex items-center gap-2">
               <ImageIcon size={17} className="text-brand-600" /> Uploaded Image
             </h2>
-            {preview && <img src={preview} alt="Preview" className="rounded-lg w-full object-contain max-h-72 bg-slate-50" />}
+            {/* Fixed: Used previews[0] instead of preview */}
+            {previews[0] && <img src={previews[0]} alt="Preview" className="rounded-lg w-full object-contain max-h-72 bg-slate-50" />}
             <div className="mt-3 text-xs text-slate-500">
-              <div>File: <span className="font-medium text-slate-700">{file?.name}</span></div>
+              {/* Fixed: Implemented your requested change for multiple file names */}
+              <div>File: <span className="font-medium text-slate-700">
+                {files.length > 1 ? `${files.length} images` : files[0]?.name}
+              </span></div>
               <div className="mt-1">Model: <span className="font-medium text-slate-700">
                 {models.find(m => m.key === selectedModel)?.display_name}
               </span></div>
@@ -350,7 +377,8 @@ export default function InspectionPage() {
                   src={`${API_BASE.replace('/api', '')}${detection.annotated_image}`}
                   alt="Annotated"
                   className="rounded-lg w-full object-contain max-h-72 bg-slate-50"
-                  onError={e => { e.target.src = preview }}
+                  /* Fixed: updated fallback to previews[0] */
+                  onError={e => { e.target.src = previews[0] }}
                 />
               ) : (
                 <div className="h-48 bg-slate-50 rounded-lg flex items-center justify-center text-slate-400 text-sm">

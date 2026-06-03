@@ -43,7 +43,110 @@ DISCLAIMER = (
     "engineering or safety-critical decisions."
 )
 
+def generate_batch_word_report(inspection: Dict, ai_report: Dict, output_path: str):
+    doc = Document()
+    section = doc.sections[0]
+    section.page_width = Cm(21)
+    section.page_height = Cm(29.7)
+    section.left_margin = Cm(2.5)
+    section.right_margin = Cm(2.5)
 
+    # Title page
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = p.add_run("Civil Infrastructure Pathology Detection Report")
+    run.font.size = Pt(20)
+    run.font.bold = True
+    run.font.color.rgb = RGBColor(0x1E, 0x40, 0xAF)
+
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run(f"Prepared for: Dani").font.bold = True
+
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run(f"Batch Inspection — {inspection.get('total_images', len(inspection.get('detections', [])))} Images")
+
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run(f"Date: {datetime.now().strftime('%B %d, %Y')}")
+
+    doc.add_page_break()
+
+    # Project info
+    _add_heading(doc, "1. Project Information")
+    table = doc.add_table(rows=5, cols=2)
+    table.style = "Table Grid"
+    rows_data = [
+        ("Report Date", datetime.now().strftime("%B %d, %Y %H:%M UTC")),
+        ("Client", "Dani"),
+        ("Asset Type", inspection.get("asset_type", "N/A")),
+        ("Detection Model", inspection.get("model_name", "N/A")),
+        ("Total Images", str(len(inspection.get("detections", [])))),
+    ]
+    for i, (label, value) in enumerate(rows_data):
+        table.rows[i].cells[0].text = label
+        table.rows[i].cells[1].text = value
+        table.rows[i].cells[0].paragraphs[0].runs[0].font.bold = True
+    doc.add_paragraph()
+
+    # Overall summary
+    _add_heading(doc, "2. Overall Detection Summary")
+    total = sum(img.get("total_defects", 0) for img in inspection.get("detections", []))
+    doc.add_paragraph(f"Total images analysed: {len(inspection.get('detections', []))}")
+    doc.add_paragraph(f"Total defects detected: {total}")
+
+    sev = inspection.get("severity_summary", {})
+    sev_table = doc.add_table(rows=2, cols=4)
+    sev_table.style = "Table Grid"
+    for i, h in enumerate(["Critical", "High", "Medium", "Low"]):
+        sev_table.rows[0].cells[i].text = h
+        sev_table.rows[0].cells[i].paragraphs[0].runs[0].font.bold = True
+        sev_table.rows[1].cells[i].text = str(sev.get(h, 0))
+    doc.add_paragraph()
+
+    # Per-image results
+    _add_heading(doc, "3. Per-Image Detection Results")
+    for idx, img_result in enumerate(inspection.get("detections", []), 1):
+        _add_heading(doc, f"3.{idx} Image: {img_result.get('filename', f'Image {idx}')}", level=2)
+
+        if img_result.get("error"):
+            doc.add_paragraph(f"Error processing image: {img_result['error']}")
+            continue
+
+        doc.add_paragraph(f"Total defects: {img_result.get('total_defects', 0)}")
+        doc.add_paragraph(f"Overall severity: {img_result.get('overall_severity', 'N/A')}")
+
+        # Annotated image
+        ann = img_result.get("annotated_image", "")
+        if ann:
+            local = Path(ann.lstrip("/"))
+            if local.exists():
+                try:
+                    doc.add_picture(str(local), width=Inches(5))
+                except Exception:
+                    pass
+
+        # Detections table
+        dets = img_result.get("detections", [])
+        if dets:
+            det_table = doc.add_table(rows=1, cols=4)
+            det_table.style = "Table Grid"
+            for i, h in enumerate(["#", "Defect Class", "Confidence", "Severity"]):
+                det_table.rows[0].cells[i].text = h
+                det_table.rows[0].cells[i].paragraphs[0].runs[0].font.bold = True
+            for i, d in enumerate(dets, 1):
+                row = det_table.add_row().cells
+                row[0].text = str(i)
+                row[1].text = d.get("class", "").replace("_", " ").title()
+                row[2].text = f"{d.get('confidence', 0):.1%}"
+                row[3].text = d.get("severity", "N/A")
+        doc.add_paragraph()
+
+    # AI report sections
+    _add_ai_sections(doc, ai_report)
+    _add_disclaimer(doc)
+    doc.save(output_path)
 def generate_word_report(inspection: Dict, ai_report: Dict, output_path: str):
     doc = Document()
 
