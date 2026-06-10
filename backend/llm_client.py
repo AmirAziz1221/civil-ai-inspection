@@ -14,35 +14,36 @@ LLM_API_KEY = os.getenv("LLM_API_KEY", "")
 LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
 LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT", "60"))
 
-SYSTEM_PROMPT = """You are a professional civil engineering inspection assistant.
-Your role is to generate clear, formal, and practical inspection reports based on AI detection results.
-Always write in professional civil engineering language.
-Always mention that results should be verified by a qualified civil engineer.
-Respond ONLY with a valid JSON object, no markdown, no extra text."""
+SYSTEM_PROMPT = """Eres un asistente profesional de inspección de ingeniería civil.
+Tu función es generar informes de inspección claros, formales y prácticos basados en los resultados de detección por IA.
+SIEMPRE escribe en español formal y profesional de ingeniería civil.
+SIEMPRE menciona que los resultados deben ser verificados por un ingeniero civil cualificado.
+Responde ÚNICAMENTE con un objeto JSON válido, sin markdown, sin texto adicional."""
 
-REPORT_PROMPT_TEMPLATE = """Generate a detailed civil engineering inspection report based on these AI detection results.
+REPORT_PROMPT_TEMPLATE = """Genera un informe detallado de inspección de ingeniería civil basado en estos resultados de detección por IA.
+IMPORTANTE: Todo el informe debe estar escrito completamente en español.
 
-Client name: Dani
-Asset type: {asset_type}
-Model used: {model_name}
-Total defects detected: {total_defects}
+Nombre del cliente: Dani
+Tipo de activo: {asset_type}
+Modelo utilizado: {model_name}
+Total de defectos detectados: {total_defects}
 
-Detected pathologies (JSON):
+Patologías detectadas (JSON):
 {detections_json}
 
-Engineer notes:
+Notas del ingeniero:
 {engineer_notes}
 
-Return a JSON object with these exact keys:
+Devuelve un objeto JSON con exactamente estas claves (todo el contenido en español):
 {{
-  "executive_summary": "2-3 sentence overview of findings",
-  "defect_descriptions": "Detailed description of each detected defect type",
-  "possible_causes": "Technical analysis of likely causes for the detected pathologies",
-  "severity_assessment": "Assessment of defect severity with engineering justification",
-  "risk_explanation": "Explanation of risks to structural integrity and safety",
-  "recommended_actions": "Specific, prioritized repair and maintenance actions",
-  "priority_level": "Immediate / Short-term / Long-term",
-  "final_conclusion": "Professional conclusion and next steps"
+  "executive_summary": "Resumen ejecutivo de 2-3 oraciones sobre los hallazgos",
+  "defect_descriptions": "Descripción detallada de cada tipo de defecto detectado",
+  "possible_causes": "Análisis técnico de las causas probables de las patologías detectadas",
+  "severity_assessment": "Evaluación de la gravedad de los defectos con justificación técnica",
+  "risk_explanation": "Explicación de los riesgos para la integridad estructural y la seguridad",
+  "recommended_actions": "Acciones de reparación y mantenimiento específicas y priorizadas",
+  "priority_level": "Inmediato / Corto plazo / Largo plazo",
+  "final_conclusion": "Conclusión profesional y próximos pasos"
 }}"""
 
 
@@ -101,7 +102,7 @@ def generate_llm_report(
 
 
 def _fallback_report(asset_type: str, model_name: str, detections: list, engineer_notes: str) -> Dict[str, Any]:
-    """Template-based fallback when LLM is not available."""
+    """Informe de plantilla cuando no hay clave LLM disponible."""
     classes = list({d["class"] for d in detections})
     severity_counts = {}
     for d in detections:
@@ -112,53 +113,59 @@ def _fallback_report(asset_type: str, model_name: str, detections: list, enginee
     high = severity_counts.get("High", 0)
 
     if critical > 0:
-        priority = "Immediate"
+        priority = "Inmediato"
     elif high > 0:
-        priority = "Short-term"
+        priority = "Corto plazo"
     else:
-        priority = "Long-term"
+        priority = "Largo plazo"
 
-    defect_list = ", ".join(classes) if classes else "general deterioration"
+    defect_list = ", ".join(classes) if classes else "deterioro general"
 
     return {
         "executive_summary": (
-            f"AI-assisted inspection of {asset_type} identified {len(detections)} pathological instances "
-            f"including {defect_list}. Immediate professional review is recommended for critical findings."
+            f"La inspección asistida por IA del activo tipo {asset_type} identificó "
+            f"{len(detections)} instancias patológicas, incluyendo {defect_list}. "
+            f"Se recomienda revisión profesional inmediata para los hallazgos críticos."
         ),
         "defect_descriptions": (
-            f"The detection model identified the following defect types: {defect_list}. "
-            f"These pathologies are characteristic of typical deterioration patterns observed in {asset_type} infrastructure. "
-            f"Distribution: {', '.join(f'{k}: {v}' for k, v in severity_counts.items())}."
+            f"El modelo de detección identificó los siguientes tipos de defectos: {defect_list}. "
+            f"Estas patologías son características de los patrones típicos de deterioro observados "
+            f"en infraestructuras de tipo {asset_type}. "
+            f"Distribución: {', '.join(f'{k}: {v}' for k, v in severity_counts.items())}."
         ),
         "possible_causes": (
-            "Detected pathologies may be attributed to: environmental exposure and weathering cycles, "
-            "mechanical loading and fatigue, material aging and carbonation, inadequate maintenance history, "
-            "and/or design or construction deficiencies. A detailed forensic investigation is required to "
-            "confirm root causes."
+            "Las patologías detectadas pueden atribuirse a: exposición ambiental y ciclos de "
+            "meteorización, carga mecánica y fatiga, envejecimiento del material y carbonatación, "
+            "historial de mantenimiento inadecuado y/o deficiencias de diseño o construcción. "
+            "Se requiere una investigación forense detallada para confirmar las causas raíz."
         ),
         "severity_assessment": (
-            f"Based on AI confidence scores, defect severity distribution is as follows: "
-            f"{', '.join(f'{k}: {v} instances' for k, v in severity_counts.items())}. "
-            f"Critical and high-severity findings require priority attention."
+            f"Basándose en las puntuaciones de confianza de la IA, la distribución de gravedad "
+            f"de los defectos es la siguiente: "
+            f"{', '.join(f'{k}: {v} instancias' for k, v in severity_counts.items())}. "
+            f"Los hallazgos críticos y de alta gravedad requieren atención prioritaria."
         ),
         "risk_explanation": (
-            "Unaddressed pathologies in {asset_type} infrastructure may lead to progressive deterioration, "
-            "reduced structural capacity, safety hazards for users, and increased remediation costs. "
-            "Critical defects pose immediate risk and must be addressed urgently.".format(asset_type=asset_type)
+            f"Las patologías no tratadas en infraestructuras de tipo {asset_type} pueden provocar "
+            f"deterioro progresivo, reducción de la capacidad estructural, riesgos de seguridad "
+            f"para los usuarios y mayores costes de reparación. Los defectos críticos representan "
+            f"un riesgo inmediato y deben abordarse con urgencia."
         ),
         "recommended_actions": (
-            "1. Engage a licensed structural engineer for on-site verification. "
-            "2. Establish safety perimeter around critical defect zones. "
-            "3. Prepare detailed repair specification for identified pathologies. "
-            "4. Implement targeted repair interventions using appropriate materials. "
-            "5. Establish routine inspection schedule (6–12 month intervals). "
-            "6. Document all findings and remediation actions."
+            "1. Contratar a un ingeniero estructural colegiado para verificación in situ. "
+            "2. Establecer perímetro de seguridad alrededor de las zonas con defectos críticos. "
+            "3. Preparar especificaciones detalladas de reparación para las patologías identificadas. "
+            "4. Implementar intervenciones de reparación específicas con materiales adecuados. "
+            "5. Establecer programa de inspección rutinaria (intervalos de 6-12 meses). "
+            "6. Documentar todos los hallazgos y acciones de reparación."
         ),
         "priority_level": priority,
         "final_conclusion": (
-            f"This AI-assisted inspection of {asset_type} identified {len(detections)} defects requiring "
-            f"professional attention. The {priority.lower()} priority classification reflects the severity "
-            f"and distribution of detected pathologies. This report should be used as a screening tool only "
-            f"and must be validated by a qualified civil engineer before any remediation decisions are made."
+            f"Esta inspección asistida por IA del activo tipo {asset_type} identificó "
+            f"{len(detections)} defectos que requieren atención profesional. "
+            f"La clasificación de prioridad '{priority}' refleja la gravedad y distribución "
+            f"de las patologías detectadas. Este informe debe utilizarse únicamente como "
+            f"herramienta de cribado y debe ser validado por un ingeniero civil cualificado "
+            f"antes de tomar cualquier decisión de reparación."
         )
     }
